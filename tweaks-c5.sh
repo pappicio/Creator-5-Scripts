@@ -378,7 +378,7 @@ set_nginx_two_instances() {
     clear
     nginx_conf=""
     nginx_bin=""
-    
+
     # 1. Determine Nginx config path
     echo "[*] Checking for Nginx configuration file..."
     for path in /usr/prog/nginx/conf/nginx.conf /usr/data/nginx/conf/nginx.conf; do
@@ -450,7 +450,7 @@ set_nginx_two_instances() {
     else
         echo "[!] Warning: Could not reload Nginx automatically. Please reload manually."
     fi
-	
+
     printf "Press Enter to return..."
     read -r _
 }
