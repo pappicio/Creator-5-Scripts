@@ -1,6 +1,6 @@
 #!/bin/sh
 
-VERSION="2.0.1"
+VERSION="2.0.2"
 
 show_menu() {
     clear
@@ -8,12 +8,12 @@ show_menu() {
     echo "                Tweaks for FF C5"
     echo "              discord.gg/7nJUB9dq4F"
     echo "                 Version $VERSION"
-	echo "           If it shows any errors, CTRL+C!"
+    echo "           If it shows any errors, CTRL+C!"
     echo "==============================================="
     echo "1) Enable loop script & Mainsail"
     echo "2) Enable Legacy NAN [EXPERIMENTAL]"
     echo "3) Add Entware [EXPERIMENTAL]"
-    echo "4) Update Mainsail"
+    echo "4) Update Mainsail [EXPERIMENTAL]"
     echo "5) Update Moonraker (INDEV)"
     echo "6) Optimize Nginx [EXPERIMENTAL]"
     echo "7) Exit"
@@ -58,15 +58,15 @@ enable_loop() {
     else
         echo "Line already exists in $TARGET_FILE, skipping."
     fi
-    mkdir "/usr/prog/scripts/loop/"
-    mkdir "/usr/prog/scripts/scripts/"
+    mkdir -p "/usr/prog/scripts/loop/"
+    mkdir -p "/usr/prog/scripts/scripts/"
     echo "[+] Created folders required"
-    cp -np scripts/loop/loop.sh /usr/prog/scripts/loop/loop.sh
+    cp -f scripts/loop/loop.sh /usr/prog/scripts/loop/loop.sh
     echo "[+] Copied loop script."
-    cp -np scripts/scripts/enable-msmr.sh /usr/prog/scripts/scripts/enable-msmr.sh
+    cp -f scripts/scripts/enable-msmr.sh /usr/prog/scripts/scripts/enable-msmr.sh
     echo "[*] Setting permissions..."
-    chmod +xwr /usr/prog/scripts/loop/loop.sh
-    chmod +xwr /usr/prog/scripts/scripts/enable-msmr.sh
+    chmod 755 /usr/prog/scripts/loop/loop.sh
+    chmod 755 /usr/prog/scripts/scripts/enable-msmr.sh
     echo "[*] All done!"
     printf "Press Enter to return to the main menu..."
     stty -echo
@@ -90,10 +90,13 @@ release_noting(){
     echo "                   Release Notes"
     echo "                  Version $VERSION"
     echo ""
-    echo "            Adds Optimization of NGINX"
-    echo "             New script is by pappicio"
-    echo "Updates the rest, any new scripts are EXPERIMENTAL"
+    echo "         Hopefully fixes the script, new warning"
     echo "=================================================="
+}
+
+get_highest_kernel() {
+    # POSIX version sorting fallback
+    ls /usr/prog/PROGRAM/kernel/ 2>/dev/null | sort -n -t. -k1,1 -k2,2 -k3,3 | tail -n 1
 }
 
 enable_nan_mips() {
@@ -107,8 +110,7 @@ enable_nan_mips() {
         return 1
     fi
 
-    # Find highest version directory/file in kernel folder
-    HIGHEST_VER=$(ls /usr/prog/PROGRAM/kernel/ | sort -V | tail -n 1)
+    HIGHEST_VER=$(get_highest_kernel)
 
     if [ -z "$HIGHEST_VER" ]; then
         echo "[-] Error: Could not determine kernel package version."
@@ -122,7 +124,7 @@ enable_nan_mips() {
     # Map version to offset
     OFFSET=""
     case "$HIGHEST_VER" in
-        "2.0.1"* | "2.0.5"*)
+        2.0.1* | 2.0.5*)
             OFFSET="0x00a130d1"
             ;;
         *)
@@ -190,17 +192,16 @@ enable_nan_mips() {
     read -r _
 }
 
-
 install_entware() {
     clear
     echo "[*] Checking for NaN Binaries enablement..."
 
-    # Ensure $OFFSET is set if it wasn't run previously in Option 1
+    # Ensure $OFFSET is set if it wasn't run previously
     if [ -z "$OFFSET" ]; then
         if [ -d "/usr/prog/PROGRAM/kernel/" ]; then
-            HIGHEST_VER=$(ls /usr/prog/PROGRAM/kernel/ | sort -V | tail -n 1)
+            HIGHEST_VER=$(get_highest_kernel)
             case "$HIGHEST_VER" in
-                "2.0.1"* | "2.0.5"*) OFFSET="0x00a130d1" ;;
+                2.0.1* | 2.0.5*) OFFSET="0x00a130d1" ;;
             esac
         fi
     fi
@@ -346,9 +347,9 @@ add_entware_packages() {
         echo "[+] Continuing update."
         echo "[+] Moving old Mainsail"
         mv /usr/data/mainsail /usr/data/mainsailbackup
-        mkdir /usr/data/mainsail && cd /usr/data/mainsail
+        mkdir -p /usr/data/mainsail && cd /usr/data/mainsail
         echo "[+] Downloading new Mainsail..."
-        curl -LO --output-dir /usr/data/ https://github.com/mainsail-crew/mainsail/releases/download/v2.18.2/mainsail.zip
+        curl -L -o /usr/data/mainsail.zip https://github.com/mainsail-crew/mainsail/releases/download/v2.18.2/mainsail.zip
         echo "[+] Unzipping Mainsail..."
         unzip /usr/data/mainsail.zip -d /usr/data/mainsail
         echo "[+] Deleting Mainsail ZIP"
@@ -366,7 +367,7 @@ add_entware_packages() {
     read -r _
 }
 
-update_moonraker () {
+update_moonraker() {
     echo "Updating Moonraker isn't supported yet..."
     echo "Check back for updates!"
     printf "Press Enter to return..."
@@ -375,22 +376,12 @@ update_moonraker () {
 
 set_nginx_two_instances() {
     clear
-    local nginx_conf="" nginx_bin=""
+    nginx_conf=""
+    nginx_bin=""
     
-    local conf_paths=(
-        "/usr/prog/nginx/conf/nginx.conf"
-        "/usr/data/nginx/conf/nginx.conf"
-    )
-    
-    local bin_paths=(
-        "/usr/prog/nginx/sbin/nginx"
-        "/usr/data/nginx/sbin/nginx"
-        "$(command -v nginx 2>/dev/null)"
-    )
-
     # 1. Determine Nginx config path
     echo "[*] Checking for Nginx configuration file..."
-    for path in "${conf_paths[@]}"; do
+    for path in /usr/prog/nginx/conf/nginx.conf /usr/data/nginx/conf/nginx.conf; do
         if [ -f "$path" ]; then
             nginx_conf="$path"
             break
@@ -399,24 +390,27 @@ set_nginx_two_instances() {
 
     if [ -z "$nginx_conf" ]; then
         echo "[-] Error: Could not locate nginx.conf in known directories."
-        read -rp "Press Enter to return..." _
+        printf "Press Enter to return..."
+        read -r _
         return 1
     fi
     echo "[+] Found Nginx config at: $nginx_conf"
 
     # 2. Determine Nginx binary path
-    for bin in "${bin_paths[@]}"; do
-        if [ -x "$bin" ]; then
+    SYS_NGINX=$(command -v nginx 2>/dev/null)
+    for bin in /usr/prog/nginx/sbin/nginx /usr/data/nginx/sbin/nginx "$SYS_NGINX"; do
+        if [ -n "$bin" ] && [ -x "$bin" ]; then
             nginx_bin="$bin"
             break
         fi
     done
 
     # 3. Check if worker_processes 1 is already set
-    if grep -qE '^[[:space:]]*worker_processes[[:space:]]+1;' "$nginx_conf"; then
+    if grep -q 'worker_processes[ 	]*1;' "$nginx_conf"; then
         echo "[!] Nginx is ALREADY configured for 1 worker process."
         echo "[!] No changes needed."
-        read -rp "Press Enter to return..." _
+        printf "Press Enter to return..."
+        read -r _
         return 0
     fi
 
@@ -424,13 +418,13 @@ set_nginx_two_instances() {
     cp "$nginx_conf" "${nginx_conf}.bak"
     echo "[*] Backup created at ${nginx_conf}.bak"
 
-    # 5. Modify or insert worker_processes directive
-    if grep -qE '^[[:space:]]*worker_processes[[:space:]]+' "$nginx_conf"; then
+    # 5. Modify or insert worker_processes directive (POSIX compatible)
+    if grep -q 'worker_processes' "$nginx_conf"; then
         echo "[*] Modifying existing worker_processes directive..."
-        sed -i -E 's/^[[:space:]]*worker_processes[[:space:]]+[^;]+;/worker_processes 1;/' "$nginx_conf"
+        sed 's/^[ 	]*worker_processes[ 	][ 	]*[^;]*;/worker_processes 1;/' "$nginx_conf" > "${nginx_conf}.tmp" && mv "${nginx_conf}.tmp" "$nginx_conf"
     else
         echo "[*] worker_processes directive not found. Adding to top of file..."
-        sed -i '1i worker_processes 1;' "$nginx_conf"
+        (echo "worker_processes 1;" && cat "$nginx_conf") > "${nginx_conf}.tmp" && mv "${nginx_conf}.tmp" "$nginx_conf"
     fi
 
     # 6. Test syntax before reloading
@@ -439,7 +433,8 @@ set_nginx_two_instances() {
         if ! "$nginx_bin" -t -c "$nginx_conf" >/dev/null 2>&1; then
             echo "[-] Error: Nginx configuration test failed! Restoring original file..."
             cp "${nginx_conf}.bak" "$nginx_conf"
-            read -rp "Press Enter to return..." _
+            printf "Press Enter to return..."
+            read -r _
             return 1
         fi
     fi
@@ -459,7 +454,8 @@ set_nginx_two_instances() {
     printf "Press Enter to return..."
     read -r _
 }
-credits () {
+
+credits() {
     echo "================================================================"
     echo "                          Credits for"
     echo "                        Version $VERSION"
@@ -493,6 +489,7 @@ while true; do
             ;;
         5)
             update_moonraker
+            ;;
         6)
             set_nginx_two_instances
             ;;
