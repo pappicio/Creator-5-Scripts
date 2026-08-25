@@ -8,6 +8,7 @@ show_menu() {
     echo "                Tweaks for FF C5"
     echo "              discord.gg/7nJUB9dq4F"
     echo "                 Version $VERSION"
+	echo "           If it shows any errors, CTRL+C!"
     echo "==============================================="
     echo "1) Enable loop script & Mainsail"
     echo "2) Enable Legacy NAN [EXPERIMENTAL]"
