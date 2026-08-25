@@ -1,6 +1,8 @@
 #!/bin/sh
 
 VERSION="2.0.2"
+set -e
+set -u
 
 show_menu() {
     clear
@@ -95,7 +97,6 @@ release_noting(){
 }
 
 get_highest_kernel() {
-    # POSIX version sorting fallback
     ls /usr/prog/PROGRAM/kernel/ 2>/dev/null | sort -n -t. -k1,1 -k2,2 -k3,3 | tail -n 1
 }
 
