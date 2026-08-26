@@ -12,7 +12,7 @@ show_menu() {
     echo "                  Version $VERSION"
     echo "           If it shows any errors, CTRL+C!"
     echo "==============================================="
-    echo "1) Enable loop script & Mainsail"
+    echo "1) Enable loop script & Mainsail [EXPERIMENTAL]"
     echo "2) Enable Legacy NAN [EXPERIMENTAL]"
     echo "3) Add Entware [EXPERIMENTAL]"
     echo "4) Update Mainsail [EXPERIMENTAL]"
