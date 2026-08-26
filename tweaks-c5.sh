@@ -9,7 +9,7 @@ show_menu() {
     echo "==============================================="
     echo "                Tweaks for FF C5"
     echo "              discord.gg/7nJUB9dq4F"
-    echo "                 Version $VERSION"
+    echo "                  Version $VERSION"
     echo "           If it shows any errors, CTRL+C!"
     echo "==============================================="
     echo "1) Enable loop script & Mainsail"
@@ -51,7 +51,11 @@ enable_loop() {
             # Insert NEW_LINE directly above MATCH_LINE
             awk -v ins="$NEW_LINE" -v match="$MATCH_LINE" \
                 'index($0, match) && !done { print ins; done=1 } { print }' \
-                "$TARGET_FILE" > "$TMP_FILE" && mv "$TMP_FILE" "$TARGET_FILE"
+                "$TARGET_FILE" > "$TMP_FILE"
+
+            # Preserve exact permissions from the original file before moving
+            chmod --reference="$TARGET_FILE" "$TMP_FILE" 2>/dev/null || chmod 755 "$TMP_FILE"
+            mv "$TMP_FILE" "$TARGET_FILE"
 
             echo "[*] Inserted loop script above target command."
         else
@@ -60,6 +64,7 @@ enable_loop() {
     else
         echo "Line already exists in $TARGET_FILE, skipping."
     fi
+
     mkdir -p "/usr/prog/scripts/loop/"
     mkdir -p "/usr/prog/scripts/scripts/"
     echo "[+] Created folders required"
@@ -69,6 +74,7 @@ enable_loop() {
     echo "[*] Setting permissions..."
     chmod 755 /usr/prog/scripts/loop/loop.sh
     chmod 755 /usr/prog/scripts/scripts/enable-msmr.sh
+    chmod +x "$TARGET_FILE"
     echo "[*] All done!"
     printf "Press Enter to return to the main menu..."
     stty -echo
@@ -89,8 +95,8 @@ release_notes() {
 
 release_noting(){
     echo "==================================================="
-    echo "                   Release Notes"
-    echo "                  Version $VERSION"
+    echo "                    Release Notes"
+    echo "                   Version $VERSION"
     echo ""
     echo "         Hopefully fixes the script, new warning"
     echo "=================================================="
@@ -122,7 +128,6 @@ enable_nan_mips() {
 
     echo "[+] Detected highest kernel version: $HIGHEST_VER"
 
-    # Map version to offset
     OFFSET=""
     case "$HIGHEST_VER" in
         2.0.1* | 2.0.5*)
@@ -141,7 +146,6 @@ enable_nan_mips() {
     echo "[+] Mapped Offset: $OFFSET"
     echo "[*] Verifying current memory state..."
 
-    # Read current state (read-only verification)
     CURRENT_VAL=$(busybox devmem "$OFFSET" 8 2>/dev/null)
     echo "[+] Current memory value at $OFFSET: $CURRENT_VAL"
 
@@ -157,11 +161,9 @@ enable_nan_mips() {
         fi
     fi
 
-    # Apply live memory write
     echo "[*] Writing 1 to $OFFSET..."
     busybox devmem "$OFFSET" 8 1
 
-    # Verify loop.sh exists before deploying script
     LOOP_FILE="/usr/prog/scripts/loop/loop.sh"
     if [ ! -f "$LOOP_FILE" ]; then
         echo "[-] Error: $LOOP_FILE does not exist!"
@@ -170,7 +172,6 @@ enable_nan_mips() {
         return 1
     fi
 
-    # Deploy script from 2 directories up
     SRC_FILE="scripts/scripts/nan-binary.sh"
     DEST_DIR="/usr/prog/scripts/scripts"
     DEST_FILE="$DEST_DIR/nan-binary.sh"
@@ -185,8 +186,8 @@ enable_nan_mips() {
     echo "[*] Deploying $SRC_FILE to $DEST_DIR..."
     mkdir -p "$DEST_DIR"
     cp "$SRC_FILE" "$DEST_FILE"
-    chmod +w "$DEST_FILE"
-    echo "[+] File successfully copied to $DEST_FILE and set to writable."
+    chmod 755 "$DEST_FILE"
+    echo "[+] File successfully copied to $DEST_FILE and made executable."
 
     echo "[+] Legacy NaN MIPS binaries enablement complete!"
     printf "Press Enter to return..."
@@ -197,8 +198,7 @@ install_entware() {
     clear
     echo "[*] Checking for NaN Binaries enablement..."
 
-    # Ensure $OFFSET is set if it wasn't run previously
-    if [ -z "$OFFSET" ]; then
+    if [ -z "${OFFSET:-}" ]; then
         if [ -d "/usr/prog/PROGRAM/kernel/" ]; then
             HIGHEST_VER=$(get_highest_kernel)
             case "$HIGHEST_VER" in
@@ -207,15 +207,13 @@ install_entware() {
         fi
     fi
 
-    # Fallback safety if offset still couldn't be determined
-    if [ -z "$OFFSET" ]; then
+    if [ -z "${OFFSET:-}" ]; then
         echo "[-] Error: Could not determine kernel offset to verify NaN support."
         printf "Press Enter to return..."
         read -r _
         return 1
     fi
 
-    # Read current state
     CURRENT_VAL=$(busybox devmem "$OFFSET" 8 2>/dev/null)
     echo "[+] Current memory value at $OFFSET: $CURRENT_VAL"
 
@@ -250,15 +248,12 @@ install_entware() {
 
     echo "[*] Proceeding with Entware installation..."
 
-    # 1. Create directories and mount
     mkdir -p /usr/data/bin/opt
     mount --bind /usr/data/bin/opt /opt
 
-    # 2. Download and run generic Entware installer
     echo "[*] Downloading and executing Entware setup script..."
     wget -O - http://bin.entware.net/mipselsf-k3.4/installer/generic.sh | sh
 
-    # 3. Add to PATH persistently in /etc/profile
     PROFILE_FILE="/etc/profile"
     EXPORT_LINE='export PATH=/opt/bin:/opt/sbin:$PATH'
     if [ -f "$PROFILE_FILE" ]; then
@@ -270,10 +265,8 @@ install_entware() {
         fi
     fi
 
-    # Export PATH for current session immediately
     export PATH=/opt/bin:/opt/sbin:$PATH
 
-    # 4. Verify loop.sh exists before deploying script
     LOOP_FILE="/usr/prog/scripts/loop/loop.sh"
     if [ ! -f "$LOOP_FILE" ]; then
         echo "[-] Error: $LOOP_FILE does not exist!"
@@ -282,7 +275,6 @@ install_entware() {
         return 1
     fi
 
-    # Deploy entware script from 2 directories up
     SRC_FILE="scripts/scripts/entware.sh"
     DEST_DIR="/usr/prog/scripts/scripts"
 
@@ -301,8 +293,8 @@ install_entware() {
     echo "[*] Deploying $SRC_FILE to $DEST_DIR..."
     mkdir -p "$DEST_DIR"
     cp "$SRC_FILE" "$DEST_FILE"
-    chmod +w "$DEST_FILE"
-    echo "[+] File successfully copied to $DEST_FILE and set to writable."
+    chmod 755 "$DEST_FILE"
+    echo "[+] File successfully copied to $DEST_FILE and made executable."
 
     echo "[+] Running opkg update"
     opkg update
@@ -380,7 +372,6 @@ set_nginx_two_instances() {
     nginx_conf=""
     nginx_bin=""
 
-    # 1. Determine Nginx config path
     echo "[*] Checking for Nginx configuration file..."
     for path in /usr/prog/nginx/conf/nginx.conf /usr/data/nginx/conf/nginx.conf; do
         if [ -f "$path" ]; then
@@ -397,8 +388,7 @@ set_nginx_two_instances() {
     fi
     echo "[+] Found Nginx config at: $nginx_conf"
 
-    # 2. Determine Nginx binary path
-    SYS_NGINX=$(command -v nginx 2>/dev/null)
+    SYS_NGINX=$(command -v nginx 2>/dev/null || true)
     for bin in /usr/prog/nginx/sbin/nginx /usr/data/nginx/sbin/nginx "$SYS_NGINX"; do
         if [ -n "$bin" ] && [ -x "$bin" ]; then
             nginx_bin="$bin"
@@ -406,7 +396,6 @@ set_nginx_two_instances() {
         fi
     done
 
-    # 3. Check if worker_processes 1 is already set
     if grep -q 'worker_processes[ 	]*1;' "$nginx_conf"; then
         echo "[!] Nginx is ALREADY configured for 1 worker process."
         echo "[!] No changes needed."
@@ -415,20 +404,21 @@ set_nginx_two_instances() {
         return 0
     fi
 
-    # 4. Create a safety backup
     cp "$nginx_conf" "${nginx_conf}.bak"
     echo "[*] Backup created at ${nginx_conf}.bak"
 
-    # 5. Modify or insert worker_processes directive (POSIX compatible)
     if grep -q 'worker_processes' "$nginx_conf"; then
         echo "[*] Modifying existing worker_processes directive..."
-        sed 's/^[ 	]*worker_processes[ 	][ 	]*[^;]*;/worker_processes 1;/' "$nginx_conf" > "${nginx_conf}.tmp" && mv "${nginx_conf}.tmp" "$nginx_conf"
+        sed 's/^[ 	]*worker_processes[ 	][ 	]*[^;]*;/worker_processes 1;/' "$nginx_conf" > "${nginx_conf}.tmp"
     else
         echo "[*] worker_processes directive not found. Adding to top of file..."
-        (echo "worker_processes 1;" && cat "$nginx_conf") > "${nginx_conf}.tmp" && mv "${nginx_conf}.tmp" "$nginx_conf"
+        (echo "worker_processes 1;" && cat "$nginx_conf") > "${nginx_conf}.tmp"
     fi
 
-    # 6. Test syntax before reloading
+    # Ensure permissions match original before replacing
+    chmod --reference="$nginx_conf" "${nginx_conf}.tmp" 2>/dev/null || chmod 644 "${nginx_conf}.tmp"
+    mv "${nginx_conf}.tmp" "$nginx_conf"
+
     if [ -n "$nginx_bin" ]; then
         echo "[*] Validating Nginx configuration syntax..."
         if ! "$nginx_bin" -t -c "$nginx_conf" >/dev/null 2>&1; then
@@ -440,7 +430,6 @@ set_nginx_two_instances() {
         fi
     fi
 
-    # 7. Reload Nginx
     echo "[+] Successfully updated $nginx_conf!"
     echo "[*] Reloading Nginx configuration..."
 
@@ -458,7 +447,7 @@ set_nginx_two_instances() {
 
 credits() {
     echo "================================================================"
-    echo "                          Credits for"
+    echo "                         Credits for"
     echo "                        Version $VERSION"
     echo ""
     echo "Some scripts are made by Cart. Some AI assist, not written by AI."
