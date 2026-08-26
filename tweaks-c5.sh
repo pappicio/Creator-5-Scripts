@@ -11,7 +11,7 @@ show_menu() {
     echo "              discord.gg/7nJUB9dq4F"
     echo "                  Version $VERSION"
     echo "           If it shows any errors, CTRL+C!"
-    echo "      Currently use the wiki pages for instead!"
+    echo "      Currently use the wiki pages instead!"
     echo "https://github.com/FlashForge-C5-Modding-Group/Creator-5-Mods"
     echo "==============================================="
     #echo "1) Enable loop script & Mainsail [EXPERIMENTAL]"
