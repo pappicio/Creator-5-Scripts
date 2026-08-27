@@ -1,5 +1,5 @@
 #!/bin/sh
-
+STARUPFIX="/usr/prog/app_startup.sh"
 VERSION="2.0.3"
 set -e
 set -u
@@ -30,14 +30,13 @@ show_menu() {
 enable_loop() {
     clear
     echo "[*] Enabling loop script"
-    TARGET_FILE="/usr/prog/app_startup.sh"
     MATCH_LINE="/usr/prog/PROGRAM/software/firmwareExe &"
     NEW_LINE="/usr/prog/scripts/loop/loop.sh &"
 
     # Ensure the target file exists
-    if [ ! -f "$TARGET_FILE" ]; then
-        echo "Error: $TARGET_FILE does not exist." >&2
-        printf "Press Enter to return to the main menu..."
+    if [ ! -f "$STARUPFIX" ]; then
+        echo "Error: $STARUPFIX does not exist." >&2
+        printf "You are in serious trouble! Do not restart your printer! Please add back the file via the firmware repo as your printer WILL soft-brick without it. Press anything to return to menu, but HEED THIS WARNING!"
         stty -echo
         read -r _
         stty echo
@@ -45,26 +44,27 @@ enable_loop() {
     fi
 
     # Check if the line is already present to avoid duplicate insertions
-    if ! grep -Fq "$NEW_LINE" "$TARGET_FILE"; then
+    if ! grep -Fq "$NEW_LINE" "$STARUPFIX"; then
         # Verify the target line exists before modifying
-        if grep -Fq "$MATCH_LINE" "$TARGET_FILE"; then
-            TMP_FILE="${TARGET_FILE}.tmp"
+        if grep -Fq "$MATCH_LINE" "$STARUPFIX"; then
+            TMP_FILE="${STARUPFIX}.tmp"
 
             # Insert NEW_LINE directly above MATCH_LINE
             awk -v ins="$NEW_LINE" -v match="$MATCH_LINE" \
                 'index($0, match) && !done { print ins; done=1 } { print }' \
-                "$TARGET_FILE" > "$TMP_FILE"
+                "$STARUPFIX" > "$TMP_FILE"
 
             # Preserve exact permissions from the original file before moving
-            chmod --reference="$TARGET_FILE" "$TMP_FILE" 2>/dev/null || chmod 755 "$TMP_FILE"
-            mv "$TMP_FILE" "$TARGET_FILE"
+            chmod --reference="$STARUPFIX" "$TMP_FILE" 2>/dev/null || chmod 755 "$TMP_FILE"
+            mv "$TMP_FILE" "$STARUPFIX"
+            chmod 755 "$STARUPFIX"
 
             echo "[*] Inserted loop script above target command."
         else
-            echo "[!] Warning: Match line not found in $TARGET_FILE." >&2
+            echo "[!] Warning: Match line not found in $STARUPFIX." >&2
         fi
     else
-        echo "Line already exists in $TARGET_FILE, skipping."
+        echo "Line already exists in $STARUPFIX, skipping."
     fi
 
     mkdir -p "/usr/prog/scripts/loop/"
@@ -76,7 +76,7 @@ enable_loop() {
     echo "[*] Setting permissions..."
     chmod 755 /usr/prog/scripts/loop/loop.sh
     chmod 755 /usr/prog/scripts/scripts/enable-msmr.sh
-    chmod +x "$TARGET_FILE"
+    chmod 755 "$STARUPFIX"
     echo "[*] All done!"
     printf "Press Enter to return to the main menu..."
     stty -echo
@@ -462,6 +462,7 @@ credits() {
 
 # --- Main Menu Loop ---
 while true; do
+    chmod 755 "$STARUPFIX"
     show_menu
     printf "Enter your choice: "
     read -r CHOICE
